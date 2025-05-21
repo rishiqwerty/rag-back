@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+*.log
+
+# Virtual environments
+.env/
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Poetry
+poetry.lock
+
+# FastAPI/uvicorn
+instance/
+*.db
+*.sqlite3
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# dotenv/direnv
+.envrc
+.envrc.local
+.env.*
+.env
+.direnv/
+
+# Model files and cache
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.h5
+*.tflite
+*.npz
+*.npy
+sentence_transformers/
+cache/
+data/
+tmp/
+tmp*/
+
+# Test and coverage
+htmlcov/
+.tox/
+.coverage
+.cache
+pytest_cache/
+nosetests.xml
+coverage.xml
+
+# Node (if using frontend)
+node_modules/
+dist/
+build/
