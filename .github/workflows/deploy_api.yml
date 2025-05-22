@@ -1,0 +1,42 @@
+name: Deploy to AWS Lambda with Zappa
+
+on:
+  push:
+    branches:
+      - main  # Trigger deployment when changes are pushed to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # You can also use windows-latest or macos-latest if required
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'  # This should match your Zappa runtime
+
+      - name: Install dependencies
+        run: |
+            python -m venv venv
+            source venv/bin/activate
+
+            python -m pip install --upgrade pip
+            pip install setuptools wheel
+            pip install -r requirements.txt
+
+      - name: Configure AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set region eu-north-1  # Change region if necessary
+
+      - name: Deploy with Zappa
+        run: |
+          source venv/bin/activate
+          zappa deploy prod || zappa update prod  # This will deploy to the production stage
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

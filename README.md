@@ -17,3 +17,6 @@ If user uploads file user need to be informed about the process and failure
 
 Need to add tessaract in docker
 need to add tokenizer in docker
+
+# Improvement
+- Embedding and api can be separated this will make api server faster

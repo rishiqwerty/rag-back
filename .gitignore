@@ -70,3 +70,5 @@ coverage.xml
 node_modules/
 dist/
 build/
+
+uploaded_files/
