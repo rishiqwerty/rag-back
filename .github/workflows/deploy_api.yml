@@ -32,7 +32,7 @@ jobs:
 
     - name: Build and push Worker Docker image
       run: |
-        docker build -t rag-worker -f worker/Dockerfile.worker .
+        docker build -t rag-worker -f Dockerfile.worker .
         docker tag rag-worker:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-worker:latest
         docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-worker:latest
 
