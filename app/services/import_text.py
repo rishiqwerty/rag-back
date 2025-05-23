@@ -3,21 +3,26 @@ from ..core.config import MAX_CHUNKS_PER_DOCUMENT
 
 import re
 
+
 def clean_text(text):
     """
     Clean the text by removing unwanted characters and formatting.
     """
     # Remove unwanted characters and formatting
-    cleaned_text = re.sub(r'[\n\t]+', ' ', text)
-    cleaned_text = re.sub(r' +', ' ', cleaned_text)
+    cleaned_text = re.sub(r"[\n\t]+", " ", text)
+    cleaned_text = re.sub(r" +", " ", cleaned_text)
     cleaned_text = cleaned_text.lower()
 
     return cleaned_text
 
-def simple_tokenize(text):
-    return re.findall(r'\b\w+\b', text)
 
-def chunk_by_tokens(document_name,text, max_tokens=300, max_chunks=MAX_CHUNKS_PER_DOCUMENT):
+def simple_tokenize(text):
+    return re.findall(r"\b\w+\b", text)
+
+
+def chunk_by_tokens(
+    document_name, text, max_tokens=300, max_chunks=MAX_CHUNKS_PER_DOCUMENT
+):
     """Split text into chunks by merging adjacent paragraphs until max_tokens is reached.
     Optionally limit total number of chunks.
     """
@@ -40,7 +45,7 @@ def chunk_by_tokens(document_name,text, max_tokens=300, max_chunks=MAX_CHUNKS_PE
                         "document_name": document_name,
                         "chunk_index": idx,
                         "text": para,
-                        "tokenized_para": current_chunk.strip()
+                        "tokenized_para": current_chunk.strip(),
                     }
                 )
 
@@ -58,10 +63,8 @@ def chunk_by_tokens(document_name,text, max_tokens=300, max_chunks=MAX_CHUNKS_PE
                 "document_name": document_name,
                 "chunk_index": idx,
                 "text": para,
-                "tokenized_para": current_chunk.strip()
+                "tokenized_para": current_chunk.strip(),
             }
         )
 
     return chunks
-
-

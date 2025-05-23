@@ -7,6 +7,7 @@ import pytesseract
 from PIL import Image
 import io
 
+
 def is_usable_text_pdf(file_path, min_chars=100):
     total_text = ""
     with fitz.open(file_path) as doc:
@@ -15,6 +16,7 @@ def is_usable_text_pdf(file_path, min_chars=100):
             total_text += text.strip()
 
     return len(total_text) > min_chars
+
 
 def ocr_pdf(file_path):
     text = ""
@@ -26,12 +28,14 @@ def ocr_pdf(file_path):
             text += f"\n\n--- Page {page_num+1} ---\n{page_text}"
     return text
 
+
 def extract_text_with_pymupdf(file_path):
     doc = pymupdf.open(file_path)
     text = ""
     for page in doc:
         text += page.get_text()
     return text
+
 
 def parse_pdf(file_path):
     if is_usable_text_pdf(file_path):
@@ -40,17 +44,21 @@ def parse_pdf(file_path):
         text = ocr_pdf(file_path)
     return text
 
+
 def parse_docx(file_path):
     doc = Document(file_path)
     return "\n".join([para.text for para in doc.paragraphs])
 
+
 def parse_text(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         return file.read()
+
 
 def parse_json(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
+
 
 def extract_json_field(file_path, field_name):
     data = parse_json(file_path)

@@ -5,6 +5,7 @@ import os
 
 from ..core.config import USE_S3, FILE_SIZE_LIMIT, BUCKET_NAME
 
+
 async def upload_file_to_s3(file: UploadFile, user_email: str):
     contents = await file.read()
     if len(contents) > FILE_SIZE_LIMIT:

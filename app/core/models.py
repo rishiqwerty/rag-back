@@ -2,6 +2,7 @@ from sqlalchemy import Column, String, DateTime, Integer
 from .database import Base
 import datetime
 
+
 class TaskStatus(Base):
     __tablename__ = "task_status"
 

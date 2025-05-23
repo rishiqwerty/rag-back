@@ -1,5 +1,6 @@
 from openai import OpenAI
 
+
 def generate_embedding(text: list[dict]) -> list:
     """
     Generate an embedding for the given text using OpenAI's API.
@@ -13,8 +14,7 @@ def generate_embedding(text: list[dict]) -> list:
     client = OpenAI()
 
     response = client.embeddings.create(
-        input=[t["text"] for t in text],
-        model="text-embedding-3-small"
+        input=[t["text"] for t in text], model="text-embedding-3-small"
     )
     embedding = response.data
     # model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")

@@ -1,5 +1,5 @@
 - Upload Doc ( Extract text )
-- Create embeddings using open ai 
+- Create embeddings using open ai
 - store it in vector database ( If doc of ssame name shoukd be able to clear the old embedding and store the new one)
 
 - APi for uploading doc
