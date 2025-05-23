@@ -17,8 +17,6 @@ ENV/
 env.bak/
 venv.bak/
 
-# Poetry
-poetry.lock
 
 # FastAPI/uvicorn
 instance/
@@ -36,7 +34,6 @@ instance/
 Thumbs.db
 
 # dotenv/direnv
-.envrc
 .envrc.local
 .env.*
 .env
