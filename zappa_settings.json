@@ -1,6 +1,6 @@
 {
   "prod": {
-    "app_function": "api.main.handler",
+    "app_function": "app.main.handler",
     "aws_region": "us-east-1",
     "profile_name": "default",
     "project_name": "rag-api",

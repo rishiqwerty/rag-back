@@ -14,6 +14,8 @@ from .utils.upload_files_to_s3 import upload_file_to_s3
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+handler = Mangum(app)
+
 
 create_schema()
 
@@ -93,6 +95,3 @@ def get_task_status(task_id: str, db: Session = Depends(get_db)):
     if not task:
         return {"error": "Task not found"}
     return {"task_id": task.task_id, "status": task.status}
-
-
-handler = Mangum(app)
