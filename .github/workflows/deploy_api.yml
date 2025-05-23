@@ -39,11 +39,11 @@ jobs:
     - name: Update API Lambda function
       run: |
         aws lambda update-function-code \
-          --function-name api-function \
+          --function-name rag_back_dock \
           --image-uri ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-api-server:latest
 
     - name: Update Worker Lambda function
       run: |
         aws lambda update-function-code \
-          --function-name worker-function \
+          --function-name praser_worker \
           --image-uri ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-worker:latest
