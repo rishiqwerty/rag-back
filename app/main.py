@@ -1,23 +1,28 @@
 from fastapi import FastAPI, UploadFile, File, Depends, Form, Request
 from mangum import Mangum
-from .services.ingestion import process_document, async_process_document
+from .services.ingestion import process_document
 from .services.weaviate_client import client, create_schema
 from sqlalchemy.orm import Session
 from .core.database import engine, get_db
 from .core import models
-from .core.validator import TaskStatusCreate
+from .core.validator import TaskStatusCreate, QuestionRequest
 from .core.config import development
 from .utils.upload_files_to_s3 import upload_file_to_s3
+from .services.embedding import generate_embedding
+from weaviate.classes.query import Filter
+
+import json
+import boto3
 
 # from slowapi import Limiter, _rate_limit_exceeded_handler
 
-models.Base.metadata.create_all(bind=engine)
-
 app = FastAPI()
-handler = Mangum(app)
 
 
-create_schema()
+@app.on_event("startup")
+def on_startup():
+    models.Base.metadata.create_all(bind=engine)
+    create_schema()
 
 
 @app.get("/")
@@ -25,23 +30,21 @@ def read_root():
     return {"Hello": "World"}
 
 
-@app.get("/questions")
-def read_questions():
-    a = "Name of the Cheif ethics counciler"
-
-    from .services.embedding import generate_embedding
-
-    # 1. Embed the question
-    question_vec = generate_embedding([{"text": a}])
-
-    # 2. Query Weaviate for similar chunks
+@app.post("/document/questions")
+def read_questions(request: QuestionRequest, db: Session = Depends(get_db)):
+    question_vec = generate_embedding([{"text": request.question}])
+    doc_id = request.task_id
+    task = (
+        db.query(models.TaskStatus).filter(models.TaskStatus.task_id == doc_id).first()
+    )
+    if not task:
+        return {"error": "Task not found"}
     results = client.collections.get("DocumentChunk").query.near_vector(
         near_vector=question_vec[0].embedding,
-        limit=3,  # Return top 3 relevant chunks
+        filters=Filter.by_property("document_name").like(task.file_path),
+        limit=3,
     )
-    # 3. Collect the most relevant texts
     answers = [obj.properties["text"] for obj in results.objects]
-    print(len(answers))
     return {"answers": answers}
 
 
@@ -70,7 +73,21 @@ async def doc_upload(
         # For local development, process the document synchronously
         process_document(task_id=db_task.task_id)
     else:
-        async_process_document(task_id=db_task.task_id)
+        sqs = boto3.client(
+            "sqs",
+        )
+
+        queue_url = (
+            "https://sqs.us-east-1.amazonaws.com/576394207135/DocumentVectorQueue"
+        )
+        sqs.send_message(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(
+                {
+                    "task_id": db_task.task_id,
+                }
+            ),
+        )
     return {
         "filename": file.filename,
         "Status": "Processing",
@@ -84,7 +101,7 @@ def test():
     Health check endpoint
     """
     ready = client.is_ready()
-    return {"status": ready}
+    return {"weaviate": ready}
 
 
 @app.get("/task-status/{task_id}")
@@ -95,3 +112,6 @@ def get_task_status(task_id: str, db: Session = Depends(get_db)):
     if not task:
         return {"error": "Task not found"}
     return {"task_id": task.task_id, "status": task.status}
+
+
+handler = Mangum(app)

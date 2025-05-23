@@ -1,42 +1,49 @@
-name: Deploy to AWS Lambda with Zappa
+name: Deploy Lambda Containers
 
 on:
   push:
     branches:
-      - main  # Trigger deployment when changes are pushed to the main branch
+      - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # You can also use windows-latest or macos-latest if required
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.12'  # This should match your Zappa runtime
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install dependencies
-        run: |
-            python -m venv venv
-            source venv/bin/activate
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
 
-            python -m pip install --upgrade pip
-            pip install setuptools wheel
-            pip install -r requirements.txt
+    - name: Build and push API Docker image
+      run: |
+        docker build -t rag-api-server -f Dockerfile.api .
+        docker tag rag-api-server:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-api-server:latest
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-api-server:latest
 
-      - name: Configure AWS CLI
-        run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region eu-north-1  # Change region if necessary
+    - name: Build and push Worker Docker image
+      run: |
+        docker build -t rag-worker -f worker/Dockerfile.worker .
+        docker tag rag-worker:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-worker:latest
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-worker:latest
 
-      - name: Deploy with Zappa
-        run: |
-          source venv/bin/activate
-          zappa deploy prod || zappa update prod  # This will deploy to the production stage
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    - name: Update API Lambda function
+      run: |
+        aws lambda update-function-code \
+          --function-name api-function \
+          --image-uri ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-api-server:latest
+
+    - name: Update Worker Lambda function
+      run: |
+        aws lambda update-function-code \
+          --function-name worker-function \
+          --image-uri ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-worker:latest
