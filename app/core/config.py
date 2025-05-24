@@ -20,3 +20,4 @@ BUCKET_NAME = os.environ.get("BUCKET_NAME", "rag_backend")
 FILE_SIZE_LIMIT = 10 * 1024 * 1024  # 10MB
 development = os.environ.get("DEVELOPMENT", "False").lower() == "true"
 SQS_QUEUE_URL = os.environ.get("SQS_QUEUE_URL")
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*")

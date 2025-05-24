@@ -57,12 +57,14 @@ def process_document(task_id: int):
     task = (
         db.query(models.TaskStatus).filter(models.TaskStatus.task_id == task_id).first()
     )
+
     try:
         if not development:
             file_path = get_file_from_s3(task.file_path)
-
+        else:
+            file_path = task.file_path
         delete_existing_document_chunks(task.file_path)
-        chunks = parse_and_chunk_document(file_path, task.file_name)
+        chunks = parse_and_chunk_document(file_path)
         _embedded = batch_embedding_for_chunks(chunks)
         for i in _embedded:
             store_chunks_in_weaviate(i)
@@ -115,6 +117,7 @@ def parse_and_chunk_document(file_path: str):
         text = parse_text(file_path=file_path)
     else:
         raise ValueError(f"Unsupported file type: {ext}")
-    chunks = chunk_by_tokens(file_path, text)
+    max_tokens = 100 if len(text) < 500 else 200
+    chunks = chunk_by_tokens(file_path, text, max_tokens=max_tokens)
 
     return chunks

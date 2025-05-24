@@ -1,6 +1,7 @@
-from fastapi import FastAPI, UploadFile, File, Depends, Form, Request
+from fastapi import FastAPI, UploadFile, File, Depends, Form
 from contextlib import asynccontextmanager
 from mangum import Mangum
+from pathlib import Path
 from .services.ingestion import process_document
 from .services.weaviate_client import client, create_schema
 from sqlalchemy.orm import Session
@@ -10,6 +11,7 @@ from .core.validator import TaskStatusCreate, QuestionRequest
 from .core.config import development, SQS_QUEUE_URL
 from .utils.upload_files_to_s3 import upload_file_to_s3
 from .services.embedding import generate_embedding
+from .middleware import add_cors_middleware
 from weaviate.classes.query import Filter
 
 import json
@@ -31,6 +33,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+add_cors_middleware(app)
 
 
 @app.get("/")
@@ -59,7 +63,6 @@ def answer_question(request: QuestionRequest, db: Session = Depends(get_db)):
     task = (
         db.query(models.TaskStatus).filter(models.TaskStatus.task_id == doc_id).first()
     )
-    print(f"Processing task_id: {doc_id}, file_path: {task.file_path}")
     if not task:
         return {"error": "Task not found"}
     results = client.collections.get("DocumentChunk").query.near_vector(
@@ -90,7 +93,7 @@ async def doc_upload(
     """
     # If development is True, we will store the file locally
     if development:
-        upload_dir = "uploads"
+        upload_dir = Path(f"uploads/{user_email}")
         upload_dir.mkdir(parents=True, exist_ok=True)
         local_file_path = upload_dir / file.filename
 
@@ -99,7 +102,10 @@ async def doc_upload(
 
         file_path = str(local_file_path)
     else:
-        file_path = await upload_file_to_s3(file, user_email)
+        try:
+            file_path = await upload_file_to_s3(file, user_email)
+        except Exception as e:
+            return {"error": f"Failed to upload file: {str(e)}"}
 
     validated = TaskStatusCreate(
         file_name=file.filename, user_email=user_email, file_path=file_path
@@ -125,7 +131,6 @@ async def doc_upload(
         db.add(db_task)
     db.commit()
     db.refresh(db_task)
-
     if development:
         # For local development, process the document synchronously
         process_document(task_id=db_task.task_id)
@@ -133,15 +138,21 @@ async def doc_upload(
         sqs = boto3.client(
             "sqs",
         )
-
-        sqs.send_message(
-            QueueUrl=SQS_QUEUE_URL,
-            MessageBody=json.dumps(
-                {
-                    "task_id": db_task.task_id,
-                }
-            ),
-        )
+        try:
+            sqs.send_message(
+                QueueUrl=SQS_QUEUE_URL,
+                MessageBody=json.dumps(
+                    {
+                        "task_id": db_task.task_id,
+                    }
+                ),
+            )
+        except Exception as e:
+            db_task.status = "failed"
+            db_task.error_message = f"Failed to send message to SQS: {str(e)}"
+            db.commit()
+            db.refresh(db_task)
+            return {"error": f"Failed to send message to SQS: {str(e)}"}
     return {
         "Status": "Processing",
         "task_id": db_task.task_id,
