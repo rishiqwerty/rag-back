@@ -2,7 +2,12 @@ from ..core.config import weaviate_url, weaviate_admin_api_key
 import weaviate
 import weaviate.classes as wvc
 from weaviate.classes.query import Filter
-from weaviate.collections.classes.config import DataType, Property, Configure
+from weaviate.collections.classes.config import (
+    DataType,
+    Property,
+    Configure,
+    VectorDistances,
+)
 
 # Connect to Weaviate Cloud
 client = weaviate.connect_to_weaviate_cloud(
@@ -28,30 +33,43 @@ def create_schema():
                 Property(name="text", data_type=DataType.TEXT),
                 Property(name="page_number", data_type=DataType.TEXT),
             ],
-            vectorizer_config=[
-                Configure.NamedVectors.none(
-                    name="custom_vector",
-                    # vector_index_config=Configure.VectorIndex.hnsw()    # (Optional) Set vector index options
-                )
-            ],
+            vectorizer_config=[Configure.NamedVectors.none(name="custom_vector")],
+            vector_index_config=Configure.VectorIndex.hnsw(
+                distance_metric=VectorDistances.COSINE
+            ),
         )
-        client.close()
 
 
-def store_chunks_in_weaviate(chunk_data):
-    embedding = chunk_data.pop("embedding")
-    client.collections.get("DocumentChunk").data.insert(
-        properties=chunk_data,
-        vector=embedding,
-    )
-
-
-def delete_existing_document_chunks(document_name):
-    existing = client.collections.get("DocumentChunk").query.bm25(
-        query=document_name, query_properties=["document_name"], limit=1
-    )
-    if existing and existing.objects:
-
-        client.collections.get("DocumentChunk").data.delete_many(
-            where=Filter.by_property("document_name").like(document_name), verbose=True
+def store_chunks_in_weaviate(chunk_data: dict):
+    """
+    Store a document chunk in Weaviate.
+    :param chunk_data: Dictionary containing the chunk data
+        with 'embedding' key.
+    """
+    try:
+        embedding = chunk_data.pop("embedding")
+        client.collections.get("DocumentChunk").data.insert(
+            properties=chunk_data,
+            vector=embedding,
         )
+    except Exception as e:
+        raise Exception(f"Error storing chunk in Weaviate: {e}")
+
+
+def delete_existing_document_chunks(document_name: str):
+    """
+    Delete existing document chunks in Weaviate for a given document name.
+    """
+    try:
+        existing = client.collections.get("DocumentChunk").query.bm25(
+            query=document_name, query_properties=["document_name"], limit=1
+        )
+        if existing and existing.objects:
+
+            client.collections.get("DocumentChunk").data.delete_many(
+                where=Filter.by_property("document_name").like(document_name),
+                verbose=True,
+            )
+
+    except Exception as e:
+        raise Exception(f"Error deleting existing document chunks: {e}")
