@@ -1,11 +1,12 @@
-import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from app.main import app
 
 client = TestClient(app)
 
 
-def test_health():
+@patch("app.main.get_client")
+def test_health(mock_get_client):
     response = client.get("/health")
     assert response.status_code == 200
     assert "weaviate" in response.json()
@@ -30,7 +31,9 @@ def test_get_users_tasks_empty():
 
 
 def test_upload_document(monkeypatch):
-    monkeypatch.setattr("app.services.ingestion.process_document", lambda task_id: None)
+    monkeypatch.setattr("app.main.development", True)
+    monkeypatch.setattr("app.main.process_document", lambda task_id: None)
+
     response = client.post(
         "/upload-document",
         files={"file": ("test.txt", b"Test content")},

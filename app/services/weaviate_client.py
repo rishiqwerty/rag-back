@@ -9,17 +9,20 @@ from weaviate.collections.classes.config import (
     VectorDistances,
 )
 
-# Connect to Weaviate Cloud
-client = weaviate.connect_to_weaviate_cloud(
-    cluster_url=weaviate_url,
-    auth_credentials=wvc.init.Auth.api_key(weaviate_admin_api_key),
-)
+
+def get_client():
+    # Connect to Weaviate Cloud
+    return weaviate.connect_to_weaviate_cloud(
+        cluster_url=weaviate_url,
+        auth_credentials=wvc.init.Auth.api_key(weaviate_admin_api_key),
+    )
 
 
 def create_schema():
     """
     Create the schema for the DocumentChunk class in Weaviate
     """
+    client = get_client()
     # if "DocumentChunk" in client.collections.list_all():
     #     client.collections.delete("DocumentChunk")
     if "DocumentChunk" not in client.collections.list_all():
@@ -47,6 +50,7 @@ def store_chunks_in_weaviate(chunk_data: dict):
         with 'embedding' key.
     """
     try:
+        client = get_client()
         embedding = chunk_data.pop("embedding")
         client.collections.get("DocumentChunk").data.insert(
             properties=chunk_data,
@@ -61,6 +65,7 @@ def delete_existing_document_chunks(document_name: str):
     Delete existing document chunks in Weaviate for a given document name.
     """
     try:
+        client = get_client()
         existing = client.collections.get("DocumentChunk").query.bm25(
             query=document_name, query_properties=["document_name"], limit=1
         )

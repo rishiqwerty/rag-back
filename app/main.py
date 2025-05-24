@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from mangum import Mangum
 from pathlib import Path
 from .services.ingestion import process_document
-from .services.weaviate_client import client, create_schema
+from .services.weaviate_client import get_client, create_schema
 from sqlalchemy.orm import Session
 from .core.database import engine, get_db
 from .core import models
@@ -65,10 +65,14 @@ def answer_question(request: QuestionRequest, db: Session = Depends(get_db)):
     )
     if not task:
         return {"error": "Task not found"}
-    results = client.collections.get("DocumentChunk").query.near_vector(
-        near_vector=question_vec[0].embedding,
-        filters=Filter.by_property("document_name").like(task.file_path),
-        limit=3,
+    results = (
+        get_client()
+        .collections.get("DocumentChunk")
+        .query.near_vector(
+            near_vector=question_vec[0].embedding,
+            filters=Filter.by_property("document_name").like(task.file_path),
+            limit=3,
+        )
     )
     answers = [obj.properties["text"] for obj in results.objects]
     return {"answers": answers}
@@ -166,7 +170,7 @@ def test():
 
     Verifies the readiness of the Weaviate client.
     """
-    ready = client.is_ready()
+    ready = get_client().is_ready()
     return {"weaviate": ready}
 
 
