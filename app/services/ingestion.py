@@ -24,27 +24,6 @@ def mark_task_as_failed(task: models.TaskStatus, error_message: str):
     task.completed_at = datetime.datetime.now(datetime.timezone.utc)
 
 
-def get_file_from_s3(file_key: str):
-    """
-    Downloads a file from S3 to a local path.
-    :param s3_key: S3 file key in the format 'path/to/file.txt'
-    :return: Local file path
-    """
-    error = ""
-    local_path = f"/tmp/{file_key}"
-    local_dir = os.path.dirname(local_path)
-    os.makedirs(local_dir, exist_ok=True)
-
-    s3 = boto3.client("s3")
-    try:
-        s3.download_file(BUCKET_NAME, file_key, local_path)
-    except Exception as e:
-        error = f"Error downloading file from S3: {e}"
-        raise Exception(error)
-
-    return local_path
-
-
 def process_document(task_id: int):
     """
     THis function will contain pdf/doc file, will call chunk_text function and
@@ -59,12 +38,8 @@ def process_document(task_id: int):
     )
 
     try:
-        if not development:
-            file_path = get_file_from_s3(task.file_path)
-        else:
-            file_path = task.file_path
         delete_existing_document_chunks(task.file_path)
-        chunks = parse_and_chunk_document(file_path)
+        chunks = parse_and_chunk_document(task.file_path)
         _embedded = batch_embedding_for_chunks(chunks)
         for i in _embedded:
             store_chunks_in_weaviate(i)
