@@ -1,7 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Depends, Form
 from contextlib import asynccontextmanager
 from mangum import Mangum
-from pathlib import Path
 from .services.ingestion import process_document
 from .services.weaviate_client import get_client, create_schema
 from sqlalchemy.orm import Session
@@ -13,6 +12,7 @@ from .utils.upload_files_to_s3 import upload_file_to_s3
 from .services.embedding import generate_embedding
 from .middleware import add_cors_middleware
 from weaviate.classes.query import Filter
+import weaviate.classes as wvc
 
 import json
 import boto3
@@ -65,16 +65,13 @@ def answer_question(request: QuestionRequest, db: Session = Depends(get_db)):
     )
     if not task:
         return {"error": "Task not found"}
-    results = (
-        get_client()
-        .collections.get("DocumentChunk")
-        .query.near_vector(
+    with get_client() as client:
+        results = client.collections.get("DocumentChunk").query.near_vector(
             near_vector=question_vec[0].embedding,
             filters=Filter.by_property("document_name").like(task.file_path),
             limit=3,
         )
-    )
-    answers = [obj.properties["text"] for obj in results.objects]
+        answers = [obj.properties["text"] for obj in results.objects]
     return {"answers": answers}
 
 
@@ -82,6 +79,7 @@ def answer_question(request: QuestionRequest, db: Session = Depends(get_db)):
 async def doc_upload(
     file: UploadFile = File(...),
     user_email: str = Form(...),
+    structured_json: bool = Form(False),
     db: Session = Depends(get_db),
 ):
     """
@@ -93,23 +91,16 @@ async def doc_upload(
     - Sends a task to SQS queue (in production) or
     processes it directly (in development).
 
+    args:
+        - **file**: The document file to be uploaded.
+        - **user_email**: The email of the user uploading the document.
+        - **structured_json**: Whether to process the document as structured JSON.
     Returns the file name, processing status.
     """
-    # If development is True, we will store the file locally
-    if development:
-        upload_dir = Path(f"uploads/{user_email}")
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        local_file_path = upload_dir / file.filename
-
-        with open(local_file_path, "wb") as f:
-            f.write(await file.read())
-
-        file_path = str(local_file_path)
-    else:
-        try:
-            file_path = await upload_file_to_s3(file, user_email)
-        except Exception as e:
-            return {"error": f"Failed to upload file: {str(e)}"}
+    try:
+        file_path = await upload_file_to_s3(file, user_email)
+    except Exception as e:
+        return {"error": f"Failed to upload file: {str(e)}"}
 
     validated = TaskStatusCreate(
         file_name=file.filename, user_email=user_email, file_path=file_path
@@ -137,7 +128,7 @@ async def doc_upload(
     db.refresh(db_task)
     if development:
         # For local development, process the document synchronously
-        process_document(task_id=db_task.task_id)
+        process_document(task_id=db_task.task_id, structured_json=str(structured_json))
     else:
         sqs = boto3.client(
             "sqs",
@@ -148,6 +139,7 @@ async def doc_upload(
                 MessageBody=json.dumps(
                     {
                         "task_id": db_task.task_id,
+                        "structured_json": str(structured_json),
                     }
                 ),
             )
@@ -170,7 +162,8 @@ def test():
 
     Verifies the readiness of the Weaviate client.
     """
-    ready = get_client().is_ready()
+    with get_client() as client:
+        ready = client.is_ready()
     return {"weaviate": ready}
 
 
@@ -178,7 +171,8 @@ def test():
 def get_task_status(task_id: str, db: Session = Depends(get_db)):
     """
     Retrieve the status of a document processing task.
-
+    Whether the parsing and embedding of the document
+    has been completed or is still in progress.
     - **task_id**: The task ID to check.
 
     Returns the task ID and its current status.
@@ -208,4 +202,46 @@ def get_users_tasks(user_email: str, db: Session = Depends(get_db)):
     return tasks
 
 
-handler = Mangum(app)
+@app.post("/users/task/json-aggregator")
+def json_data_aggregator(
+    task_id: str,
+    field: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Custom JSON data aggregator for Weaviate queries.
+    Get sum, maximum, minimum, mean, and count of a specified field
+    for a given task ID.
+    - **task_id**: The ID of the task to query.
+    - **field**: The field to aggregate (e.g., "score").
+    Returns a dictionary with the aggregated results.
+    """
+    task = (
+        db.query(models.TaskStatus).filter(models.TaskStatus.task_id == task_id).first()
+    )
+    if not task:
+        return {"error": "Task not found"}
+    with get_client() as client:
+        agg_result = client.collections.get("StructureJSONPlayer").aggregate.over_all(
+            total_count=True,
+            filters=Filter.by_property("document_name").like(task.file_path),
+            return_metrics=wvc.query.Metrics("score").integer(
+                count=True,
+                maximum=True,
+                minimum=True,
+                mean=True,
+                sum_=True,
+            ),
+        )
+    output = {
+        "count": agg_result.total_count,
+        "maximum": agg_result.properties["score"].maximum,
+        "minimum": agg_result.properties["score"].minimum,
+        "mean": agg_result.properties["score"].mean,
+        "total": agg_result.properties["score"].sum_,
+    }
+
+    return {"task_id": task_id, "field": field, "output": output}
+
+
+handler = Mangum(app)  # For AWS Lambda compatibility

@@ -1,0 +1,58 @@
+# This is for integrating Tesseract OCR into a Docker image based on Amazon Linux 2.
+# Dockerfile.builder
+FROM amazonlinux:2 AS builder
+
+# Install build tools and dependencies
+RUN yum groupinstall -y "Development Tools" && \
+    yum install -y \
+        wget \
+        git \
+        autoconf \
+        automake \
+        libtool \
+        pkgconfig \
+        libjpeg-devel \
+        libpng-devel \
+        libtiff-devel \
+        zlib-devel \
+        pango-devel \
+        cairo-devel \
+        glib2-devel && \
+    yum clean all
+
+WORKDIR /tmp
+
+# Build and install Leptonica 1.82.0 from source
+RUN wget http://www.leptonica.org/source/leptonica-1.82.0.tar.gz && \
+    tar -xzf leptonica-1.82.0.tar.gz && \
+    cd leptonica-1.82.0 && \
+    ./configure && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/leptonica-1.82.0 /tmp/leptonica-1.82.0.tar.gz
+
+# Build and install Tesseract 5.3.1 from source
+RUN wget https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.3.1.tar.gz && \
+    tar -xzf 5.3.1.tar.gz && \
+    cd tesseract-5.3.1 && \
+    ./autogen.sh && \
+    PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./configure && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/tesseract-5.3.1 /tmp/5.3.1.tar.gz
+
+# Clean up build dependencies and caches
+RUN yum remove -y \
+        wget \
+        git \
+        autoconf \
+        automake \
+        libtool \
+        pkgconfig \
+        gcc \
+        gcc-c++ \
+        make && \
+    yum clean all && \
+    rm -rf /tmp/* /var/cache/yum

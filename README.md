@@ -21,6 +21,7 @@ Backend implementation for a Retrieval-Augmented Generation (RAG) system. It int
 - Docker if using Docker for development
 - Direnv if not using docker for development
 - postgresql
+- Tesseract for ocr
 - waeviate account with database configured
 - hosted postgres url
 - Open AI developer account
@@ -51,9 +52,13 @@ Note: Refer environment setup to fill .env file other it will throw error
 uvicorn app.main:app --port 8090 --reload
 ```
 
-#### Prod
+### 🎬 Prod
 Prod Deployment is configured based on AWS, and git actions for cicd
 **AWS Setup**
+- Create ecr repository for storing docker images used for deplyment as lambda function
+    - `rag-api-server` for fastapi server
+    - `rag-worker` for document parser and embedding
+    - (Optional) `tesseract-ocr` for packaging in rag-worker at build time
 - Create SQS Standard one. add its url to env variable.
 - Create lambda functions one for worker which will be responsible for parsing and embedding the docs and one for API.
     - Create IAM Role for API server with following permissions
@@ -66,11 +71,40 @@ Prod Deployment is configured based on AWS, and git actions for cicd
     - Add env varible to both the lambdas as provided in env setup section
 - Create API Gateway with HTTPv2 protocol and link it with API server lambda
 - Create a AWS user for Github actions, and get the AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_ACCOUNT_ID and store it in Secret of the repo of this fork
-- Now if you trigger Github actions it should automatically deploy the code to lambdas.
+- **One time setup:**
+    - Build and push tesseract-ocr image to aws ecr repo which we created earlier and make sure its name matches in dockerfile.tesseract, use Dockerfile.tesseract for building image
+    ```
+        # Link aws account is connected with docker
+        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <accountid>.dkr.ecr.us-east-1.amazonaws.com
+        # Build tesseract image
+        docker build --platform linux/amd64 TESSERACT_image <accountid>.dkr.ecr.us-east-1.amazonaws.com/tesseract-ocr-aws:latest  -t tesseract-ocr-aws -f Dockerfile.tesseract .
+        # Tag it
+        docker tag tesseract-ocr-aws:latest <accountid>.dkr.ecr.us-east-1.amazonaws.com/tesseract-ocr-aws:latest
+
+        # Push to ecr
+        docker push <accountid>.dkr.ecr.us-east-1.amazonaws.com/tesseract-ocr-aws:latest
+    ```
+    - Make sure to update github workflow `deploy_api.yml` to use Dockerfile.worker.tesseract if ocr is needed else use Dockerfile.worker
+- Now if you trigger Github actions it should automatically deploy the code to lambdas. Secrets need to filled
 **Note:**
-- Do Check logs for any error message related to permisson and adjust it based on that
+- Do Check logs for any error message related to permission and adjust it based on that
 - Lambda name for worker is hardcoded as `rag-worker` and `rag-api-server`, make sure these values matches your lambda name
 
+### 🕵🏻‍♂️ Env & SECRETS:
+#### ENV:
+- WEAVIATE_OPENAI_ADMIN_KEY - Weaviate key for Openai based vector embedding
+- WEAVIATE_URL - Weaviate database url
+- OPENAI_API_KEY - Key
+- PROD_DATABASE_URL - Postgresql url
+- BUCKET_NAME - For storing user uploaded files
+- SQS_QUEUE_URL - SQS url
+- DEVELOPMENT - To disable various s3 based calls and process files locally
+#### Github Actions Secrets
+- AWS_ACCESS_KEY_ID : <key_id>
+- AWS_ACCOUNT_ID : <account_id>
+- AWS_REGION : <region>
+- AWS_SECRET_ACCESS_KEY : <secret_key>
+- TESSERACT_IMAGE : <ecr_image>
 
 ## ⚙️ Detailed Workflow
 ### 📥 1. Document Upload & Task Creation
@@ -216,6 +250,25 @@ https://73kls1ka81.execute-api.us-east-1.amazonaws.com/
 
 
 
+### POST /users/task/json-aggregator
+- **Description:** Get Aggregator values for structured json data.
+- **Path Parameter:**
+    - task_id (required) : Document task id
+    - field (required) : Numeric field which needs to be aggregated
+- **Response**:
+    ```
+    {
+        "task_id": "9",
+        "field": "score",
+        "output": {
+            "count": 2,
+            "maximum": 320,
+            "minimum": 280,
+            "mean": 300,
+            "total": 600
+        }
+    }
+    ```
 ### 📊 API Docs URL (Auto-Generated)
 The application exposes several API endpoints for document processing and querying. The API documentation is available via Swagger UI at:
 
@@ -243,9 +296,10 @@ Why:
 - Reliable relational database for managing task status, metadata.
 - Future Extensibility for user auth and analytics.
 
-### Challenges
+### 😥 Challenges
 - Handling duplicate document uploads: For this implemented task lookup by file path + user_email to update existing records and delete and recreate weaviate object.
 - Asynchronous processing in production: Decided on AWS SQS for task queuing, keeping local dev synchronous.
+- Adding Tesseract to AWS Lambda was a pain: Packaging native binaries, managing shared library dependencies, and configuring TESSDATA_PREFIX correctly made the setup fragile and time-consuming.
 
 ### 🚀 Enhancement Plan
 As the system scales and to maintain reliability under high concurrency, we should introduce the following improvements:
@@ -259,9 +313,24 @@ An unrestricted number of document uploads per user could flood the system, lead
 **Solution:**
 Introduce a user-level rate limit (e.g., 5 documents per minute)
 
+#### PDF OCR is English Only
+Currently, Tesseract PDF OCR functionality is limited to English-language documents. Multi-language support can be added by integrating libraries or using multilingual OCR services.
+
+#### OCR is Slow and Doesn’t Support Long Documents
+The current worker Lambda handles both OCR and embedding. Running OCR (via Tesseract) on a 4–5 page document takes around 30–40 seconds by lambda, which slows down the overall processing pipeline. For longer documents, this time increases significantly, making it inefficient and prone to timeouts.
+
+**Solution:**
+We can replace Tesseract with AWS Textract, which supports asynchronous processing via SNS notifications. This allows us to:
+- Subscribe to Textract job completions via SNS
+- Decouple OCR parsing and embedding into separate Lambdas
+- Improve performance and scalability for documents requiring OCR.
+
 #### In-House Embedding Model as Fallback
 If OpenAI API quotas are exhausted, embedding generation halts — causing delays in document ingestion.
 **Solution:**
 - Host an in-house embedding model (e.g., sentence-transformers on Fargate)
 - Use it as a fallback option when OpenAI is unavailable or limits are hit.
 - Since local embeddings might differ in quality, maintain a separate Weaviate collection (e.g., LocalDocumentChunk) to avoid polluting OpenAI-embedded data.
+
+#### 🗑️ Integrate Cleaning
+Cleaning up files older than specific days can speed up fetch problems in future by reducing clutter and potential conflicts.

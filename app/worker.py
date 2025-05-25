@@ -9,5 +9,6 @@ def lambda_handler(event, context):
 
         print(f"Processing task_id: {task_id}")
         process_document(task_id)
+        print(f"Completed processing task_id: {task_id}")
 
     return {"statusCode": 200, "body": json.dumps("Processed all tasks successfully")}

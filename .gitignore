@@ -69,3 +69,5 @@ dist/
 build/
 
 uploaded_files/
+
+*.pdf

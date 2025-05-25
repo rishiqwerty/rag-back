@@ -39,7 +39,7 @@ def chunk_by_tokens(
         )
 
     if not text or not isinstance(text, str):
-        raise ValueError("Text must be a non-empty string")
+        raise ValueError("chunk_by_tokens: Text must be a non-empty string")
 
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
     chunks = []

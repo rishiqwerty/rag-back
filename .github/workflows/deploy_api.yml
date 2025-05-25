@@ -32,7 +32,8 @@ jobs:
 
     - name: Build and push Worker Docker image
       run: |
-        docker build -t rag-worker -f Dockerfile.worker .
+        # docker build -t rag-worker -f Dockerfile.worker . (Use this if tesseract is not needed)
+        docker build -t rag-worker --build-arg TESSERACT_IMAGE=${{ secrets.TESSERACT_IMAGE }} -f Dockerfile.worker.tesseract .
         docker tag rag-worker:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-worker:latest
         docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-worker:latest
 

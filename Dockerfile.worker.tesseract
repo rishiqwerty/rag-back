@@ -1,0 +1,41 @@
+# This is for building a Docker image with Tesseract OCR 5.3.1.
+#Use your Tesseract image as a build stage
+ARG TESSERACT_IMAGE=public.ecr.aws/lambda/python:3.12
+FROM ${TESSERACT_IMAGE} AS tesseract-layer
+
+# Runtime stage: minimal lambda python 3.12 image
+FROM public.ecr.aws/lambda/python:3.12
+
+# Copy Tesseract binaries and libraries from builder
+COPY --from=tesseract-layer /usr/local/bin/tesseract /usr/local/bin/tesseract
+COPY --from=tesseract-layer /usr/local/lib/ /usr/local/lib/
+COPY --from=tesseract-layer /usr/local/include/ /usr/local/include/
+COPY --from=tesseract-layer /usr/local/share/tessdata /usr/local/share/tessdata
+COPY --from=tesseract-layer /lib64/libpng15.so.15 /lib64/libpng15.so.15
+COPY --from=tesseract-layer /lib64/libjpeg.so.62 /lib64/libjpeg.so.62
+COPY --from=tesseract-layer /lib64/libtiff.so.5 /lib64/libtiff.so.5
+COPY --from=tesseract-layer /lib64/libz.so.1 /lib64/libz.so.1
+COPY --from=tesseract-layer /lib64/libjbig.so.2.0 /lib64/libjbig.so.2.0
+COPY --from=tesseract-layer /lib64/libstdc++.so.6 /lib64/libstdc++.so.6
+COPY --from=tesseract-layer /lib64/libgomp.so.1 /lib64/libgomp.so.1
+COPY --from=tesseract-layer /usr/local/share/tessdata /usr/local/share/tessdata
+
+RUN curl -L -o /usr/local/share/tessdata/eng.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata
+ENV TESSDATA_PREFIX=/usr/local/share/tessdata
+ENV LD_LIBRARY_PATH=/usr/local/lib:/lib64
+
+
+# Set working directory
+WORKDIR /var/task/
+
+# Copy only requirements first for caching dependencies
+COPY requirements.txt .
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the app code
+COPY . .
+
+# Set the Lambda handler
+CMD ["app.worker.lambda_handler"]

@@ -1,3 +1,4 @@
+from app.utils.json_helper import flatten_json, json_to_text_snippet
 import pymupdf
 import fitz
 from docx import Document
@@ -8,7 +9,7 @@ from PIL import Image
 import io
 import boto3
 from botocore.exceptions import ClientError
-from ..core.config import BUCKET_NAME, development
+from ..core.config import BUCKET_NAME
 
 
 def is_usable_text_pdf(file_path, min_chars=100):
@@ -68,14 +69,11 @@ def extract_text_with_pymupdf(file_path):
     return text
 
 
-def parse_pdf(file_path):
+def parse_pdf(file_path, s3_key=None):
     if is_usable_text_pdf(file_path):
         text = extract_text_with_pymupdf(file_path)
     else:
-        if development:
-            text = ocr_pdf(file_path)
-        else:
-            aws_ocr_pdf(file_path)
+        text = ocr_pdf(file_path)
     return text
 
 
@@ -90,10 +88,15 @@ def parse_text(file_path):
 
 
 def parse_json(file_path):
+    snippets = ""
     with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        json_array = json.load(f)
+        if json_array and isinstance(json_array, list):
+            for obj in json_array:
+                flat_json = flatten_json(json_array)
+                snippets += json_to_text_snippet(obj)
+        else:
+            flat_json = flatten_json(json_array)
+            snippets += json_to_text_snippet(flat_json)
 
-
-def extract_json_field(file_path, field_name):
-    data = parse_json(file_path)
-    return data.get(field_name, "")
+    return snippets
