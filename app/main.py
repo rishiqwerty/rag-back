@@ -26,7 +26,7 @@ import boto3
 # from slowapi import Limiter, _rate_limit_exceeded_handler
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 add_cors_middleware(app)
 
