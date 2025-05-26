@@ -70,9 +70,10 @@ def process_document(task_id: int, structured_json: str = None):
         )
         delete_existing_document_chunks(task.file_path)
 
-        if structured_json and structured_json == "True":
+        if structured_json and structured_json == "true":
             delete_existing_json_agg(task.file_path)
             structured_json_parse(file_path, s3_key=task.file_path)
+            task.additional_info = "structured_json"
 
         chunks = parse_and_chunk_document(file_path, s3_key=task.file_path)
         _embedded = batch_embedding_for_chunks(chunks)

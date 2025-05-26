@@ -37,6 +37,13 @@ jobs:
         docker tag rag-worker:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-worker:latest
         docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-worker:latest
 
+    - name: Run database migrations
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      run: |
+        pip install alembic
+        alembic upgrade head
+
     - name: Update API Lambda function
       run: |
         aws lambda update-function-code \

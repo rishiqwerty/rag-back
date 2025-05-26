@@ -12,5 +12,6 @@ class TaskStatus(Base):
     file_path = Column(String)
     user_email = Column(String)
     error_message = Column(String, nullable=True)
+    additional_info = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.now(datetime.timezone.utc))
     completed_at = Column(DateTime, nullable=True)

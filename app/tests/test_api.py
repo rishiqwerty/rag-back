@@ -32,7 +32,9 @@ def test_get_users_tasks_empty():
 
 def test_upload_document(monkeypatch):
     monkeypatch.setattr("app.main.development", True)
-    monkeypatch.setattr("app.main.process_document", lambda task_id: None)
+    monkeypatch.setattr(
+        "app.main.process_document", lambda task_id, structured_json: None
+    )
 
     response = client.post(
         "/upload-document",

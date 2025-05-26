@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Depends, Form
+from fastapi import FastAPI, UploadFile, File, Depends, Form, Query
 from contextlib import asynccontextmanager
 from mangum import Mangum
 from .services.ingestion import process_document
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
     Application lifespan event handler to create the database tables
     and Weaviate schema
     """
-    models.Base.metadata.create_all(bind=engine)
+    # models.Base.metadata.create_all(bind=engine)
     create_schema()
 
     yield
@@ -133,7 +133,9 @@ async def doc_upload(
     db.refresh(db_task)
     if development:
         # For local development, process the document synchronously
-        process_document(task_id=db_task.task_id, structured_json=str(structured_json))
+        process_document(
+            task_id=db_task.task_id, structured_json=str(structured_json).lower()
+        )
     else:
         sqs = boto3.client(
             "sqs",
@@ -191,17 +193,29 @@ def get_task_status(task_id: str, db: Session = Depends(get_db)):
 
 
 @app.get("/users/tasks/{user_email}")
-def get_users_tasks(user_email: str, db: Session = Depends(get_db)):
+def get_users_tasks(
+    user_email: str,
+    structured_json: bool = Query(
+        False, description="Filter tasks with structured JSON"
+    ),
+    db: Session = Depends(get_db),
+):
     """
     Retrieve all tasks for a specific user.
 
     - **user_email**: The email of the user whose tasks are to be retrieved.
-
+    - **structured_json**: Optional query parameter to filter tasks
     Returns a list of tasks associated with the user.
     """
+    additional_info = None
+    if structured_json:
+        additional_info = "structured_json"
     tasks = (
         db.query(models.TaskStatus)
-        .filter(models.TaskStatus.user_email == user_email)
+        .filter(
+            models.TaskStatus.user_email == user_email,
+            models.TaskStatus.additional_info == additional_info,
+        )
         .all()
     )
     return tasks

@@ -47,6 +47,10 @@ Note: Refer environment setup to fill .env file other it will throw error
     pip install poetry
     poetry install
 ```
+- Run migrations
+```
+alembic upgrade head
+```
 - Use uvicorn to run the server
 ```
 uvicorn app.main:app --port 8090 --reload
