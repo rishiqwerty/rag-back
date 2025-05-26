@@ -1,5 +1,8 @@
 # RAG-BACK
 Backend implementation for a Retrieval-Augmented Generation (RAG) system. It integrates document processing, embedding, storage, and querying functionalities.
+## ⛓️‍💥 Live Links
+UI - https://rag-frontend-ruddy.vercel.app/  
+Swagger UI - https://73kls1ka81.execute-api.us-east-1.amazonaws.com/docs/
 
 ## 🔧 Key Features
 - FastAPI: Serves as the web framework for building RESTful APIs.
@@ -307,11 +310,13 @@ Why:
 - Automatic OpenAPI documentation (/docs).
 - Async-friendly for scalable request handling.
 
-#### ☁️ AWS S3 + SQS for Production
+#### ☁️ AWS Lambda + S3 + SQS for Production
 Why:
+- Easy deployment on s3 no need of managing servers
 - S3 offers scalable, durable storage for uploaded documents.
 - SQS decouples ingestion requests from processing jobs for better scalability in production.
 Trade-off:
+- Initial API call take some time to load.
 - Added setup complexity for queue management and cloud permissions.
 - In development mode, tasks are processed synchronously for simplicity.
 - Lambda deployment is Not good for processing big document files
