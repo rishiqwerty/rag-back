@@ -106,7 +106,8 @@ Prod Deployment is configured based on AWS, and git actions for cicd
 - AWS_SECRET_ACCESS_KEY : <secret_key>
 - TESSERACT_IMAGE : <ecr_image>
 
-## ⚙️ Detailed Workflow
+## 🏛️ ⚙️ Architecture & Detailed Workflow
+![Diagram](./ArchitectureDiagram.png)
 ### 📥 1. Document Upload & Task Creation
 - User sends a POST /upload-document request with:
     - Document file (PDF, DOCX, TXT, or JSON)
@@ -151,6 +152,11 @@ Prod Deployment is configured based on AWS, and git actions for cicd
     - Stores uploaded documents in cloud storage.
 - AWS SQS (Production):
     - Queues processing tasks for asynchronous background document processing.
+
+### {} JSON Data RAG Extension (Bonus)
+- Ingests structured JSON records into a separate JsonDataRecord collection
+- Supports property-based aggregate queries like:
+- Max/min/sum/avg on numerical fields
 
 
 ## 📖 API Documentation
@@ -258,15 +264,15 @@ https://73kls1ka81.execute-api.us-east-1.amazonaws.com/
 - **Response**:
     ```
     {
-        "task_id": "9",
-        "field": "score",
-        "output": {
-            "count": 2,
-            "maximum": 320,
-            "minimum": 280,
-            "mean": 300,
-            "total": 600
-        }
+    "task_id": "10",
+    "field": "age",
+    "output": {
+        "count": 50,
+        "maximum": 64,
+        "minimum": 18,
+        "mean": 44.32,
+        "total": 2216
+    }
     }
     ```
 ### 📊 API Docs URL (Auto-Generated)

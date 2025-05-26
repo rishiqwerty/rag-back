@@ -6,7 +6,12 @@ from .services.weaviate_client import get_client, create_schema
 from sqlalchemy.orm import Session
 from .core.database import engine, get_db
 from .core import models
-from .core.validator import TaskStatusCreate, QuestionRequest
+from .core.validator import (
+    AggregationResult,
+    TaskStatusCreate,
+    QuestionRequest,
+    AggregationResponse,
+)
 from .core.config import development, SQS_QUEUE_URL
 from .utils.upload_files_to_s3 import upload_file_to_s3
 from .services.embedding import generate_embedding
@@ -202,7 +207,7 @@ def get_users_tasks(user_email: str, db: Session = Depends(get_db)):
     return tasks
 
 
-@app.post("/users/task/json-aggregator")
+@app.post("/users/task/json-aggregator", response_model=AggregationResponse)
 def json_data_aggregator(
     task_id: str,
     field: str,
@@ -221,25 +226,66 @@ def json_data_aggregator(
     )
     if not task:
         return {"error": "Task not found"}
-    with get_client() as client:
-        agg_result = client.collections.get("StructureJSONPlayer").aggregate.over_all(
-            total_count=True,
-            filters=Filter.by_property("document_name").like(task.file_path),
-            return_metrics=wvc.query.Metrics("score").integer(
-                count=True,
-                maximum=True,
-                minimum=True,
-                mean=True,
-                sum_=True,
-            ),
+    try:
+        with get_client() as client:
+            agg_result = client.collections.get(
+                "StructureJSONPlayer"
+            ).aggregate.over_all(
+                total_count=True,
+                filters=Filter.by_property("document_name").like(task.file_path),
+                return_metrics=wvc.query.Metrics(field).integer(
+                    count=True,
+                    maximum=True,
+                    minimum=True,
+                    mean=True,
+                    sum_=True,
+                ),
+            )
+            max_user_details = client.collections.get(
+                "StructureJSONPlayer"
+            ).query.fetch_objects(
+                filters=(
+                    Filter.by_property("document_name").like(task.file_path)
+                    & Filter.by_property(field).equal(
+                        agg_result.properties[field].maximum
+                    )
+                )
+            )
+            min_user_details = client.collections.get(
+                "StructureJSONPlayer"
+            ).query.fetch_objects(
+                filters=(
+                    Filter.by_property("document_name").like(task.file_path)
+                    & Filter.by_property(field).equal(
+                        agg_result.properties[field].minimum
+                    )
+                )
+            )
+            max_user_data = []
+            if max_user_details and max_user_details.objects:
+                for obj in max_user_details.objects:
+                    max_user_data.append(obj.properties)
+            min_user_data = []
+            if min_user_details and min_user_details.objects:
+                for obj in min_user_details.objects:
+                    min_user_data.append(obj.properties)
+
+        output = AggregationResult(
+            count=agg_result.total_count,
+            maximum=agg_result.properties[field].maximum,
+            minimum=agg_result.properties[field].minimum,
+            mean=agg_result.properties[field].mean,
+            total=agg_result.properties[field].sum_,
+            max_user_details=max_user_data,
+            min_user_details=min_user_data,
         )
-    output = {
-        "count": agg_result.total_count,
-        "maximum": agg_result.properties["score"].maximum,
-        "minimum": agg_result.properties["score"].minimum,
-        "mean": agg_result.properties["score"].mean,
-        "total": agg_result.properties["score"].sum_,
-    }
+
+    except Exception as e:
+        return {
+            "task_id": task_id,
+            "field": field,
+            "error": f"Facing some issue with weaviate please try again later {str(e)}",
+        }
 
     return {"task_id": task_id, "field": field, "output": output}
 

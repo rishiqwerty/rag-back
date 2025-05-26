@@ -1,6 +1,6 @@
 import json
 import os
-from app.utils.json_helper import validate_player_json
+from app.utils.json_helper import validate_json
 import boto3
 from app.core.config import BUCKET_NAME, development
 from app.core import models
@@ -12,7 +12,7 @@ from app.services.weaviate_client import (
     delete_existing_document_chunks,
     delete_existing_json_agg,
     store_chunks_in_weaviate,
-    store_structure_json_player,
+    store_structured_json_in_weaviate,
 )
 import datetime
 
@@ -145,12 +145,12 @@ def structured_json_parse(file_path: str, s3_key: str):
             data = json.load(f)
             if not isinstance(data, list):
                 data["document_name"] = s3_key
-                store_structure_json_player(data)
-                validate_player_json(data)
+                store_structured_json_in_weaviate(data)
+                validate_json(data)
             else:
                 for item in data:
-                    validate_player_json(item)
+                    validate_json(item)
                     item["document_name"] = s3_key
-                    store_structure_json_player(item)
+                store_structured_json_in_weaviate(data)
     except Exception as e:
         raise Exception(f"Error parsing structured JSON: {e}")

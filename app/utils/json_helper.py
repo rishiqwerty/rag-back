@@ -33,7 +33,7 @@ def json_to_text_snippet(obj):
     return ", ".join(parts)
 
 
-def validate_player_json(player_json):
+def validate_json(json_data):
     """
     Validate the structure of a player JSON object.
     Args:
@@ -41,14 +41,24 @@ def validate_player_json(player_json):
     Returns:
         bool: True if the JSON object is valid, raises an error otherwise.
     """
-    required_fields = {"name": str, "score": (int, float), "games": int}
+    required_fields = {
+        "customer_id": int,
+        "name": str,
+        "age": int,
+        "membership": str,
+        "purchases_last_6_months": int,
+        "total_spent": (int, float),
+        "preferred_category": str,
+        "last_purchase_date": str,
+        "nearest_store": str,
+    }
 
     for field, expected_type in required_fields.items():
-        if field not in player_json:
+        if field not in json_data:
             raise ValueError(f"Missing required field: {field}")
-        if not isinstance(player_json[field], expected_type):
+        if not isinstance(json_data[field], expected_type):
             raise TypeError(
-                f"Field {field} must be of type {expected_type}, got {type(player_json[field])}"
+                f"Field {field} must be of type {expected_type}, got {type(json_data[field])}"
             )
 
     return True

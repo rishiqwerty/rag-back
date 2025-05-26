@@ -6,7 +6,6 @@ from weaviate.collections.classes.config import (
     DataType,
     Property,
     Configure,
-    VectorDistances,
 )
 
 
@@ -51,9 +50,15 @@ def create_schema():
                         data_type=DataType.TEXT,
                         index_searchable=True,
                     ),
+                    Property(name="customer_id", data_type=DataType.NUMBER),
                     Property(name="name", data_type=DataType.TEXT),
-                    Property(name="score", data_type=DataType.NUMBER),
-                    Property(name="games", data_type=DataType.NUMBER),
+                    Property(name="age", data_type=DataType.NUMBER),
+                    Property(name="membership", data_type=DataType.TEXT),
+                    Property(name="purchases_last_6_months", data_type=DataType.NUMBER),
+                    Property(name="preferred_category", data_type=DataType.TEXT),
+                    Property(name="last_purchase_date", data_type=DataType.TEXT),
+                    Property(name="nearest_store", data_type=DataType.TEXT),
+                    Property(name="total_spent", data_type=DataType.NUMBER),
                 ],
                 vectorizer_config=[Configure.NamedVectors.none(name="custom_vector")],
             )
@@ -70,8 +75,8 @@ def store_chunks_in_weaviate(chunk_data: dict):
     :param chunk_data: Dictionary containing the chunk data
         with 'embedding' key.
     """
+    client = get_client()
     try:
-        client = get_client()
         embedding = chunk_data.pop("embedding")
         client.collections.get("DocumentChunk").data.insert(
             properties=chunk_data,
@@ -83,15 +88,15 @@ def store_chunks_in_weaviate(chunk_data: dict):
         client.close()
 
 
-def store_structure_json_player(data: dict):
+def store_structured_json_in_weaviate(data: dict):
     """
     Store a StructureJSONPlayer in Weaviate.
     :param data: Dictionary containing the player data.
     """
+    client = get_client()
     try:
-        client = get_client()
-        client.collections.get("StructureJSONPlayer").data.insert(
-            properties=data,
+        client.collections.get("StructureJSONPlayer").data.insert_many(
+            data,
         )
     except Exception as e:
         raise Exception(f"Error storing StructureJSONPlayer in Weaviate: {e}")
@@ -103,8 +108,8 @@ def delete_existing_document_chunks(document_name: str):
     """
     Delete existing document chunks in Weaviate for a given document name.
     """
+    client = get_client()
     try:
-        client = get_client()
         existing = client.collections.get("DocumentChunk").query.bm25(
             query=document_name, query_properties=["document_name"], limit=1
         )
@@ -125,8 +130,8 @@ def delete_existing_json_agg(document_name: str):
     """
     Delete existing json player object in Weaviate for a given document name.
     """
+    client = get_client()
     try:
-        client = get_client()
         existing = client.collections.get("StructureJSONPlayer").query.bm25(
             query=document_name, query_properties=["document_name"], limit=1
         )
