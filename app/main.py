@@ -62,7 +62,7 @@ def answer_question(request: QuestionRequest, db: Session = Depends(get_db)):
     with get_client() as client:
         results = client.collections.get("DocumentChunk").query.near_vector(
             near_vector=question_vec[0].embedding,
-            filters=Filter.by_property("document_name").like(task.file_path),
+            filters=Filter.by_property("document_name").equal(task.file_path),
             limit=3,
         )
         answers = [obj.properties["text"] for obj in results.objects]
