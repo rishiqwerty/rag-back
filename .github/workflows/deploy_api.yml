@@ -41,7 +41,9 @@ jobs:
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
       run: |
-        pip install alembic
+        docker run --rm \
+        -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
+        ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/rag-api-server:latest \
         alembic upgrade head
 
     - name: Update API Lambda function
