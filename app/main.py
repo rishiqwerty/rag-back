@@ -73,7 +73,9 @@ def answer_question(request: QuestionRequest, db: Session = Depends(get_db)):
 async def doc_upload(
     file: UploadFile = File(...),
     user_email: str = Form(...),
-    is_structured_json: str = Form("false"),
+    is_structured_json: bool = Form(
+        False, description="Whether the document is structured JSON"
+    ),
     db: Session = Depends(get_db),
 ):
     """
@@ -123,7 +125,7 @@ async def doc_upload(
     if development:
         # For local development, process the document synchronously
         process_document(
-            task_id=db_task.task_id, structured_json=is_structured_json.lower()
+            task_id=db_task.task_id, structured_json=str(is_structured_json).lower()
         )
     else:
         sqs = boto3.client(
