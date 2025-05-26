@@ -82,8 +82,16 @@ Prod Deployment is configured based on AWS, and git actions for cicd
 ```
     alembic upgrade head
 ```
-- **One time setup:**
-    - Build and push tesseract-ocr image to aws ecr repo which we created earlier and make sure its name matches in dockerfile.tesseract, use Dockerfile.tesseract for building image
+
+**Weaviate Vector Database setup**
+- Create a cluster with dimensions set as 1538
+- Collect API key and URL and store it in `WEAVIATE_OPENAI_ADMIN_KEY` and `WEAVIATE_URL` locally
+- Then create a schema by running below command from backend directory
+```
+    python -m app.services.utils.create_schema_wrapper
+```
+**One time setup:**
+- Build and push tesseract-ocr image to aws ecr repo which we created earlier and make sure its name matches in dockerfile.tesseract, use Dockerfile.tesseract for building image
     ```
         # Link aws account is connected with docker
         aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <accountid>.dkr.ecr.us-east-1.amazonaws.com
@@ -95,7 +103,7 @@ Prod Deployment is configured based on AWS, and git actions for cicd
         # Push to ecr
         docker push <accountid>.dkr.ecr.us-east-1.amazonaws.com/tesseract-ocr-aws:latest
     ```
-    - Make sure to update github workflow `deploy_api.yml` to use Dockerfile.worker.tesseract if ocr is needed else use Dockerfile.worker
+- Make sure to update github workflow `deploy_api.yml` to use Dockerfile.worker.tesseract if ocr is needed else use Dockerfile.worker
 - Now if you trigger Github actions it should automatically deploy the code to lambdas. Secrets need to filled
 **Note:**
 - Do Check logs for any error message related to permission and adjust it based on that

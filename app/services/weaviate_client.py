@@ -88,7 +88,28 @@ def store_chunks_in_weaviate(chunk_data: dict):
         client.close()
 
 
-def store_structured_json_in_weaviate(data: dict):
+def store_batch_chunks_in_weaviate(chunk_data: list[dict]):
+    """
+    Store multiple document chunks in Weaviate.
+    :param chunk_data: List of dictionaries containing the chunk data
+        with 'embedding' key.
+    """
+    client = get_client()
+    try:
+        collection = client.collections.get("DocumentChunk")
+        print(f"Storing {len(chunk_data)} chunks in Weaviate...")
+        with collection.batch.fixed_size(batch_size=200) as batch:
+            for data_row in chunk_data:
+                embedding = data_row.pop("embedding")
+                batch.add_object(
+                    properties=data_row,
+                    vector=embedding,
+                )
+    finally:
+        client.close()
+
+
+def store_structured_json_in_weaviate(data: list[dict]):
     """
     Store a StructureJSONPlayer in Weaviate.
     :param data: Dictionary containing the player data.

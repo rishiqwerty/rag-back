@@ -26,18 +26,6 @@ import boto3
 # from slowapi import Limiter, _rate_limit_exceeded_handler
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Application lifespan event handler to create the database tables
-    and Weaviate schema
-    """
-    # models.Base.metadata.create_all(bind=engine)
-    create_schema()
-
-    yield
-
-
 app = FastAPI(lifespan=lifespan)
 
 add_cors_middleware(app)

@@ -11,7 +11,7 @@ from app.services.parser import parse_docx, parse_json, parse_pdf, parse_text
 from app.services.weaviate_client import (
     delete_existing_document_chunks,
     delete_existing_json_agg,
-    store_chunks_in_weaviate,
+    store_batch_chunks_in_weaviate,
     store_structured_json_in_weaviate,
 )
 import datetime
@@ -77,8 +77,9 @@ def process_document(task_id: int, structured_json: str = None):
 
         chunks = parse_and_chunk_document(file_path, s3_key=task.file_path)
         _embedded = batch_embedding_for_chunks(chunks)
-        for i in _embedded:
-            store_chunks_in_weaviate(i)
+        store_batch_chunks_in_weaviate(_embedded)
+        # for i in _embedded:
+        #     store_chunks_in_weaviate(i)
 
         task.status = "completed"
         task.completed_at = datetime.datetime.now(datetime.timezone.utc)
