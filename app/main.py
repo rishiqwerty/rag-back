@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from .core.database import engine, get_db
 from .core import models
 from .core.validator import (
+    AggregationRequest,
     AggregationResult,
     TaskStatusCreate,
     QuestionRequest,
@@ -84,7 +85,7 @@ def answer_question(request: QuestionRequest, db: Session = Depends(get_db)):
 async def doc_upload(
     file: UploadFile = File(...),
     user_email: str = Form(...),
-    structured_json: bool = Form(False),
+    is_structured_json: str = Form("false"),
     db: Session = Depends(get_db),
 ):
     """
@@ -99,7 +100,7 @@ async def doc_upload(
     args:
         - **file**: The document file to be uploaded.
         - **user_email**: The email of the user uploading the document.
-        - **structured_json**: Whether to process the document as structured JSON.
+        - **is_structured_json**: Whether to process the document as structured JSON.
     Returns the file name, processing status.
     """
     try:
@@ -134,7 +135,7 @@ async def doc_upload(
     if development:
         # For local development, process the document synchronously
         process_document(
-            task_id=db_task.task_id, structured_json=str(structured_json).lower()
+            task_id=db_task.task_id, structured_json=is_structured_json.lower()
         )
     else:
         sqs = boto3.client(
@@ -146,7 +147,7 @@ async def doc_upload(
                 MessageBody=json.dumps(
                     {
                         "task_id": db_task.task_id,
-                        "structured_json": str(structured_json),
+                        "structured_json": str(is_structured_json),
                     }
                 ),
             )
@@ -223,8 +224,7 @@ def get_users_tasks(
 
 @app.post("/users/task/json-aggregator", response_model=AggregationResponse)
 def json_data_aggregator(
-    task_id: str,
-    field: str,
+    request: AggregationRequest,
     db: Session = Depends(get_db),
 ):
     """
@@ -235,6 +235,8 @@ def json_data_aggregator(
     - **field**: The field to aggregate (e.g., "score").
     Returns a dictionary with the aggregated results.
     """
+    task_id = request.task_id
+    field = request.field
     task = (
         db.query(models.TaskStatus).filter(models.TaskStatus.task_id == task_id).first()
     )

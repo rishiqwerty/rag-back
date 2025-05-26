@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Optional, Union
 from pydantic import BaseModel, EmailStr
 
 
@@ -14,15 +14,20 @@ class QuestionRequest(BaseModel):
 
 class AggregationResult(BaseModel):
     count: int
-    maximum: int
-    minimum: int
-    mean: float
-    total: int
-    max_user_details: List[Any]
-    min_user_details: List[Any]
+    maximum: Optional[Union[float, int]]
+    minimum: Optional[Union[float, int]]
+    mean: Optional[Union[float, int]]
+    total: Optional[Union[float, int]]
+    max_user_details: Optional[List[dict]]
+    min_user_details: Optional[List[dict]]
 
 
 class AggregationResponse(BaseModel):
     task_id: str
     field: str
     output: AggregationResult
+
+
+class AggregationRequest(BaseModel):
+    task_id: str
+    field: str
