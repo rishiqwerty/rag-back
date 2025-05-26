@@ -12,6 +12,11 @@ Swagger UI - https://73kls1ka81.execute-api.us-east-1.amazonaws.com/docs/
 
 ## 📁 Project Structure
 - app/: Contains the main application code, including API endpoints and background workers.
+    - services/: This contains embedding, parsing and text chunking code
+    - core/: Mostly contains database and schema validation related stuff as well as configs.
+    - main.py: Contains all the apis and routes and also acts as entry point for api-server
+    - worker.py: Is the entrypoint for document parsing and embedding service for lambda
+- migrations/: Relational databases migration files
 - Dockerfile.api: Defines the Docker image for the API service. (Prod)
 - Dockerfile.worker: Defines the Docker image for the background worker service. (Prod)
 - Dockerfile.dev: Defines the Docker image for the API service and document processing in development. (Dev)
@@ -40,7 +45,7 @@ The project includes Dockerfiles for containerizing both the API and worker serv
     ```
     docker run -p 8000:8000 --env-file .env rag-server-dev
     ```
-Note: Refer environment setup to fill .env file other it will throw error
+Note: Refer environment setup to fill .env file otherwise it will throw error
 
 **Direnv**
 - Create .envrc.local and place all the env variables
@@ -61,6 +66,7 @@ uvicorn app.main:app --port 8090 --reload
 
 ### 🎬 Prod
 Prod Deployment is configured based on AWS, and git actions for cicd
+
 **AWS Setup**
 - Create ecr repository for storing docker images used for deplyment as lambda function
     - `rag-api-server` for fastapi server
