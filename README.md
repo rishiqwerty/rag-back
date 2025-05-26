@@ -75,6 +75,13 @@ Prod Deployment is configured based on AWS, and git actions for cicd
     - Add env varible to both the lambdas as provided in env setup section
 - Create API Gateway with HTTPv2 protocol and link it with API server lambda
 - Create a AWS user for Github actions, and get the AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_ACCOUNT_ID and store it in Secret of the repo of this fork
+
+**Database Setup (Relational SQL)**
+- Setup database on neondb or aws and copy the url and add it to env variable `PROD_DATABASE_URL`
+- Run migration from local terminal whenever there is any new changes in the database
+```
+    alembic upgrade head
+```
 - **One time setup:**
     - Build and push tesseract-ocr image to aws ecr repo which we created earlier and make sure its name matches in dockerfile.tesseract, use Dockerfile.tesseract for building image
     ```
