@@ -124,7 +124,6 @@ Production deployment is configured on AWS with GitHub Actions for CI/CD.
 * Create an AWS user for GitHub Actions, and add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `AWS_ACCOUNT_ID` to the repo secrets.
 
 **Database Setup (Relational SQL)**
-<<<<<<< HEAD
 - Setup database on neondb or aws and copy the url and add it to env variable `PROD_DATABASE_URL`
 - Run migration from local terminal whenever there is any new changes in the database
 ```
@@ -153,37 +152,7 @@ Production deployment is configured on AWS with GitHub Actions for CI/CD.
     ```
 - Make sure to update github workflow `deploy_api.yml` to use Dockerfile.worker.tesseract if ocr is needed else use Dockerfile.worker
 - Now if you trigger Github actions it should automatically deploy the code to lambdas. Secrets need to filled
-=======
 
-* Set up a database on NeonDB or AWS, then copy the URL into the `PROD_DATABASE_URL` environment variable.
-* Run migrations locally when database changes are made:
-
-```
-alembic upgrade head
-```
-**Weaviate Vector Database setup**
-* Create a cluster with dimensions set as 1538
-* Collect API key and URL and store it in `WEAVIATE_OPENAI_ADMIN_KEY` and `WEAVIATE_URL` locally
-* Then create a schema by running below command from backend directory
-```
-    python -m app.services.utils.create_schema_wrapper
-```
-**One-time setup:**
-
-* Build and push the Tesseract image to AWS ECR:
-
-```
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <accountid>.dkr.ecr.us-east-1.amazonaws.com
-docker build -t tesseract-layer-builder -f Dockerfile.tesseract .
-docker tag tesseract-ocr-aws:latest <accountid>.dkr.ecr.us-east-1.amazonaws.com/tesseract-ocr-aws:latest
-docker push <accountid>.dkr.ecr.us-east-1.amazonaws.com/tesseract-ocr-aws:latest
-```
-
-* Update the GitHub workflow `deploy_api.yml` to use `Dockerfile.worker.tesseract` if OCR is required, else use `Dockerfile.worker`.
-* Once configured, GitHub Actions should automatically deploy code to Lambdas when triggered.
-  *Ensure repo secrets are filled.*
-
->>>>>>> a9b1d84 (Update README.md)
 **Note:**
 
 * Check logs for permission-related errors and adjust as needed.
