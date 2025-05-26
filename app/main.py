@@ -94,6 +94,8 @@ async def doc_upload(
     Returns the file name, processing status.
     """
     try:
+        if is_structured_json and "json" not in file.filename:
+            return {"error": "File must be a JSON file for structured JSON processing."}
         file_path = await upload_file_to_s3(file, user_email)
     except Exception as e:
         return {"error": f"Failed to upload file: {str(e)}"}

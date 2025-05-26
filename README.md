@@ -1,5 +1,21 @@
 # RAG-BACK
 Backend implementation for a Retrieval-Augmented Generation (RAG) system. It integrates document processing, embedding, storage, and querying functionalities.
+## ⛓️‍💥 Live Links
+UI - https://rag-frontend-ruddy.vercel.app/  
+Swagger UI - https://73kls1ka81.execute-api.us-east-1.amazonaws.com/docs/
+
+## 📸 Screenshots UI/ Swagger
+<img width="240" alt="Screenshot 2025-05-26 at 10 55 27 PM" src="https://github.com/user-attachments/assets/a2963bd0-76c6-4d58-825b-ce1f4b39d6c3" />_
+<img width="240" alt="Screenshot 2025-05-27 at 1 20 02 AM" src="https://github.com/user-attachments/assets/74457476-2ac8-4dd1-9b9d-d360e5992280" />_
+<img width="240" alt="Screenshot 2025-05-27 at 1 43 22 AM" src="https://github.com/user-attachments/assets/1662265b-cce2-4c23-b47e-d18cc920dd84" />_
+<img width="240" alt="Screenshot 2025-05-27 at 1 56 22 AM" src="https://github.com/user-attachments/assets/441f1883-1848-4041-a81f-d04956b1f311" />_
+
+1. **File Upload Section:** Users can upload various document files. We have the option to select structured json to store non vector data for calculating aggregates
+This enables the system to later compute aggregates like totals, averages, or counts from that structured data.
+2. **Document Search & Q&A Section:** Allows users to search for previously uploaded documents by email. Once a document is selected, users can ask natural language questions about the document content. The system processes the query contextually based on the selected document.
+3. **Aggregate Calculation Section:** If you searched for a JSON file marked as "Structured JSON", this section becomes available for selected json. Users can select fields and aggregation functions (like sum, average, min, max) to compute insights from the structured data.
+4. **Swagger UI Integration:** Provides an interactive API documentation and testing interface. Developers and users can view, test, and interact with all available API endpoints directly from the browser.
+
 
 ## 🔧 Key Features
 - FastAPI: Serves as the web framework for building RESTful APIs.
@@ -8,73 +24,104 @@ Backend implementation for a Retrieval-Augmented Generation (RAG) system. It int
 
 
 ## 📁 Project Structure
-- app/: Contains the main application code, including API endpoints and background workers.
-- Dockerfile.api: Defines the Docker image for the API service. (Prod)
-- Dockerfile.worker: Defines the Docker image for the background worker service. (Prod)
-- Dockerfile.dev: Defines the Docker image for the API service and document processing in development. (Dev)
-- requirements.txt: Lists the Python dependencies required for the project.
-- .pre-commit-config.yaml: Configuration for pre-commit hooks to maintain code quality.
+
+* **app/:** Contains the main application code, including API endpoints and background workers.
+
+  * **services/:** Embedding, parsing, and text chunking code.
+  * **core/:** Contains database, schema validation code, and configs.
+  * **main.py:** All APIs and routes; acts as the entry point for the API server.
+  * **worker.py:** Entry point for the document parsing and embedding service for Lambda.
+* **migrations/:** Relational database migration files.
+* **Dockerfile.api:** Defines the Docker image for the API service (production).
+* **Dockerfile.worker:** Defines the Docker image for the background worker service (production).
+* **Dockerfile.dev:** Defines the Docker image for development (API service and document processing).
+* **requirements.txt:** Lists the Python dependencies required for the project.
+* **.pre-commit-config.yaml:** Configuration for pre-commit hooks to maintain code quality.
 
 ## ⚙️ Setup and Deployment
-**Prerequisites:**
-- Python3.12
-- Docker if using Docker for development
-- Direnv if not using docker for development
-- postgresql
-- Tesseract for ocr
-- waeviate account with database configured
-- hosted postgres url
-- Open AI developer account
 
-### 🔨 Devlopment:
+**Prerequisites:**
+
+* Python 3.12
+* Docker (for development)
+* Direnv (if not using Docker)
+* PostgreSQL
+* Tesseract for OCR
+* Weaviate account with a configured database
+* Hosted PostgreSQL URL
+* OpenAI developer account
+
+### 🔨 Development:
+
 **Docker**
-- Build the docker image
-The project includes Dockerfiles for containerizing both the API and worker services, facilitating deployment. Dependencies are managed using requirements.txt.
-    ```
-    docker build -t rag-server-dev -f Dockerfile.dev .
-    ```
-- Run the docker image to bring up the server
-    ```
-    docker run -p 8000:8000 --env-file .env rag-server-dev
-    ```
-Note: Refer environment setup to fill .env file other it will throw error
+
+* Build the Docker image:
+
+```
+docker build -t rag-server-dev -f Dockerfile.dev .
+```
+
+* Run the Docker container:
+
+```
+docker run -p 8000:8000 --env-file .env rag-server-dev
+```
+
+*Note: Refer to the environment setup to fill the .env file; otherwise, it will throw an error.*
 
 **Direnv**
-- Create .envrc.local and place all the env variables
-- Run `direnv allow` to create env
-- Install poetry and the packages required for this repo
+
+* Create `.envrc.local` and place all the environment variables inside.
+* Run `direnv allow` to load them.
+* Install Poetry and the required packages:
+
 ```
-    pip install poetry
-    poetry install
+pip install poetry
+poetry install
 ```
-- Run migrations
+
+* Run migrations:
+
 ```
 alembic upgrade head
 ```
-- Use uvicorn to run the server
+
+* Run the server:
+
 ```
 uvicorn app.main:app --port 8090 --reload
 ```
 
-### 🎬 Prod
-Prod Deployment is configured based on AWS, and git actions for cicd
+### 🎬 Production
+
+Production deployment is configured on AWS with GitHub Actions for CI/CD.
+
 **AWS Setup**
-- Create ecr repository for storing docker images used for deplyment as lambda function
-    - `rag-api-server` for fastapi server
-    - `rag-worker` for document parser and embedding
-    - (Optional) `tesseract-ocr` for packaging in rag-worker at build time
-- Create SQS Standard one. add its url to env variable.
-- Create lambda functions one for worker which will be responsible for parsing and embedding the docs and one for API.
-    - Create IAM Role for API server with following permissions
-        - LambdaInvoke
-        - S3 GET,PUT,LIST for bucket in use
-        - SQS All access
-    - Create IAM Role for Worker server with following permissions
-        - S3 GET, LIST for bucket in use
-        - SQS All access
-    - Add env varible to both the lambdas as provided in env setup section
-- Create API Gateway with HTTPv2 protocol and link it with API server lambda
-- Create a AWS user for Github actions, and get the AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_ACCOUNT_ID and store it in Secret of the repo of this fork
+
+* Create ECR repositories for storing Docker images used for Lambda deployment:
+
+  * `rag-api-server` for the FastAPI server.
+  * `rag-worker` for the document parser and embedding.
+  * *(Optional)* `tesseract-ocr` for packaging OCR within `rag-worker`.
+* Create an SQS Standard queue; add its URL to the environment variable.
+* Create two Lambda functions:
+
+  * One for the worker (parsing and embedding documents).
+  * One for the API.
+* Create IAM roles:
+
+  * **API Server Lambda:**
+
+    * Lambda Invoke
+    * S3 GET, PUT, LIST for the configured bucket
+    * SQS full access
+  * **Worker Lambda:**
+
+    * S3 GET, LIST for the bucket
+    * SQS full access
+  * Add environment variables to both Lambdas as per the environment setup section.
+* Create an API Gateway (HTTP v2 protocol) linked to the API Lambda.
+* Create an AWS user for GitHub Actions, and add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `AWS_ACCOUNT_ID` to the repo secrets.
 
 **Database Setup (Relational SQL)**
 - Setup database on neondb or aws and copy the url and add it to env variable `PROD_DATABASE_URL`
@@ -105,25 +152,31 @@ Prod Deployment is configured based on AWS, and git actions for cicd
     ```
 - Make sure to update github workflow `deploy_api.yml` to use Dockerfile.worker.tesseract if ocr is needed else use Dockerfile.worker
 - Now if you trigger Github actions it should automatically deploy the code to lambdas. Secrets need to filled
-**Note:**
-- Do Check logs for any error message related to permission and adjust it based on that
-- Lambda name for worker is hardcoded as `rag-worker` and `rag-api-server`, make sure these values matches your lambda name
 
-### 🕵🏻‍♂️ Env & SECRETS:
-#### ENV:
-- WEAVIATE_OPENAI_ADMIN_KEY - Weaviate key for Openai based vector embedding
-- WEAVIATE_URL - Weaviate database url
-- OPENAI_API_KEY - Key
-- PROD_DATABASE_URL - Postgresql url
-- BUCKET_NAME - For storing user uploaded files
-- SQS_QUEUE_URL - SQS url
-- DEVELOPMENT - To disable various s3 based calls and process files locally
-#### Github Actions Secrets
-- AWS_ACCESS_KEY_ID : <key_id>
-- AWS_ACCOUNT_ID : <account_id>
-- AWS_REGION : <region>
-- AWS_SECRET_ACCESS_KEY : <secret_key>
-- TESSERACT_IMAGE : <ecr_image>
+**Note:**
+
+* Check logs for permission-related errors and adjust as needed.
+* Lambda names for the worker and API are hardcoded as `rag-worker` and `rag-api-server`. Ensure your Lambda names match.
+
+## 🕵🏻‍♂️ Env & Secrets
+
+#### Environment Variables:
+
+* `WEAVIATE_OPENAI_ADMIN_KEY` – Weaviate key for OpenAI-based vector embedding
+* `WEAVIATE_URL` – Weaviate database URL
+* `OPENAI_API_KEY` – OpenAI key
+* `PROD_DATABASE_URL` – PostgreSQL URL
+* `BUCKET_NAME` – S3 bucket for uploaded files
+* `SQS_QUEUE_URL` – SQS URL
+* `DEVELOPMENT` – Disable S3 calls and process files locally in dev
+
+#### GitHub Actions Secrets:
+
+* `AWS_ACCESS_KEY_ID`
+* `AWS_ACCOUNT_ID`
+* `AWS_REGION`
+* `AWS_SECRET_ACCESS_KEY`
+* `TESSERACT_IMAGE`
 
 ## 🏛️ ⚙️ Architecture & Detailed Workflow
 ![Diagram](./ArchitectureDiagram.png)
@@ -144,7 +197,7 @@ Prod Deployment is configured based on AWS, and git actions for cicd
 - The process_document(task_id) function:
     - Reads the file content
     - Splits the document into manageable chunks
-    - Generates text embeddings for each chunk using a Open AI embedding model
+    - Generates text embeddings for each chunk using an Open AI embedding model
     - Pushes each chunk embedding along with metadata (document name, text, chunk id) to the Weaviate vector database
     - Updates the task status to completed in the TaskStatus table
 
@@ -307,11 +360,13 @@ Why:
 - Automatic OpenAPI documentation (/docs).
 - Async-friendly for scalable request handling.
 
-#### ☁️ AWS S3 + SQS for Production
+#### ☁️ AWS Lambda + S3 + SQS for Production
 Why:
+- Easy deployment on s3 no need of managing servers
 - S3 offers scalable, durable storage for uploaded documents.
 - SQS decouples ingestion requests from processing jobs for better scalability in production.
 Trade-off:
+- Initial API call take some time to load.
 - Added setup complexity for queue management and cloud permissions.
 - In development mode, tasks are processed synchronously for simplicity.
 - Lambda deployment is Not good for processing big document files
