@@ -250,6 +250,8 @@ https://73kls1ka81.execute-api.us-east-1.amazonaws.com/
     - Content-Type: multipart/form-data
     - Form Data:
         - file (required) — The document file (PDF, DOCX, TXT, JSON)
+        - user_email (required) - Email
+        - is_structured_json (Optional)(bool) - If it is structured json file, mark it true for aggregate calcilations.
 - **Response:**
     ```
         {
@@ -308,7 +310,9 @@ https://73kls1ka81.execute-api.us-east-1.amazonaws.com/
 
 ### 📋 GET /users/tasks/{user_email}
 - **Description:** Fetches all document processing tasks associated with a specific user.
-- **Path Parameter:** user_email (required)
+- **Path Parameter:**
+    - user_email (required)
+    - structured_json (optional) : Boolean field if you want to get only structured json docs
 - **Response**:
     ```
     [
