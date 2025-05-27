@@ -24,7 +24,7 @@ def generate_embedding(text: list[dict]) -> list:
 
     except openai.APIConnectionError as e:
         raise Exception(f"API connection error: {e}")
-    except openai.RatelimitError as e:
+    except openai.RateLimitError as e:
         raise Exception(f"API connection error: {e}")
     except Exception as e:
         raise Exception(f"API connection error: {e}")
